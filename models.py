@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import tensorflow as tf
 import gc
+from layers import *
 
 def dae(num_input_columns, layer_size = 1000, BLOCKS = 3, drop_rate=.05, cutmix_rate=.2,
                 mixup_rate=.1, num_embedded_dims=None):
