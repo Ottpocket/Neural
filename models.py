@@ -123,8 +123,10 @@ class NeuralWrapper:
                 self.model = dae(**args)
                 self.embedder = tf.keras.Model(inputs=self.model.inputs,
                                                outputs=self.model.get_layer(name=f'Dense_{args["BLOCKS"]-1}').output)
+                self.output_cols = args['layer_size']
             else:
                 self.model = ff(**args)
+                self.output_cols = 1
 
         self.model.save(os.path.join(self.directory, 'model1.h5'))
     def fit(self, X, val, epochs=150):
@@ -166,6 +168,12 @@ class NeuralWrapper:
         else:
             return self.model.predict(X, batch_size=10000)
 
+    def get_output_shape(self, data):
+        '''
+        returns shape of output from this neural network
+        '''
+        return (data.shape[0]. self.output_cols)
+
 class NrepeatsModel:
     '''
     Wrapper function around a sklearn compatable model NN.  Either Dae-like or feed forward.
@@ -195,7 +203,7 @@ class NrepeatsModel:
             self.models[i].fit(X, val, epochs=150)
 
     def predict(self, X):
-        outputs = np.zeros(shape = (X.shape[0], self.arguments['layer_size']), dtype=np.float32)
+        outputs = np.zeros(shape = self.models[0].get_output_shape(X), dtype=np.float32)
         for i in range(self.repeats):
             outputs += self.models[i].predict(X) / self.repeats
 
