@@ -64,7 +64,7 @@ def ff(num_input_columns, BLOCKS = 3, drop_rate=.05, block_sizes = None):
 
 class NeuralWrapper:
     def __init__(self, name, kind, FEATURES, directory, TARGET, args,
-                 strategy, rerun_on_all_data=False):
+                 strategy = None, rerun_on_all_data=False):
         '''
         args: (dict) dict of all model specific NN params.
               for kind=='dae': num_input_columns, layer_size, BLOCKS, drop_rate, cutmix_rate, mixup_rate, num_embedded_dims
@@ -81,6 +81,25 @@ class NeuralWrapper:
         self.directory = os.path.join(directory, name)
         self.TARGET = TARGET
         self.rerun_on_all_data = rerun_on_all_data
+        if strategy is not None:
+            self.strategy = strategy
+        else:
+            # Detect hardware, return appropriate distribution strategy
+            try:
+                tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
+                print('Running on TPU ', tpu.master())
+            except ValueError:
+                tpu = None
+
+            if tpu:
+                tf.config.experimental_connect_to_cluster(tpu)
+                tf.tpu.experimental.initialize_tpu_system(tpu)
+                self.strategy = tf.distribute.experimental.TPUStrategy(tpu)
+            else:
+                self.strategy = tf.distribute.get_strategy()
+
+
+
         #Create a fold subdirectory inside main directory.
         #If main directory is already created, just added the next
         # fold directory
@@ -98,7 +117,7 @@ class NeuralWrapper:
                                                                 restore_best_weights=True)
         self.model_checkpoint = tf.keras.callbacks.ModelCheckpoint(self.directory, monitor='val_loss', verbose=0, save_best_only=False,
                                                                    save_weights_only=True, save_freq='epoch')
-        with strategy.scope():
+        with self.strategy.scope():
             if self.kind=='dae':
                 self.model = dae(**args)
                 self.embedder = tf.keras.Model(inputs=self.model.inputs,
