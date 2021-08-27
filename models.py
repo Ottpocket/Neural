@@ -179,7 +179,7 @@ class NrepeatsModel:
     Wrapper function around a sklearn compatable model NN.  Either Dae-like or feed forward.
     Run NN repeats times on data
     '''
-    def __init__(self, model, arguments, repeats=5):
+    def __init__(self, arguments, repeats=5):
         '''
         ARGUMENTS
         ____________
@@ -191,10 +191,14 @@ class NrepeatsModel:
         self.repeats = repeats
         self.arguments = arguments
         for i in range(repeats):
-            if 'name' in arguments.keys():
-                name = arguments['name']
-                arguments['name'] = f'{name}_{i}'
-            self.models.append(model(**arguments))
+            if 'NUM' not in arguments['name']:
+                arguments['name'] = f'{arguments["name"]}_NUM0'
+            else:    
+                i = 0
+                while f'NUM{i}' in arguments['name']:
+                    i += 1
+            arguments['name'] = f'{arguments["name"]}_NUM{i}'      
+            self.models.append(NeuralWrapper(**arguments))
 
     def fit(self, X, val, epochs=150):
 
