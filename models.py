@@ -64,12 +64,13 @@ def ff(num_input_columns, BLOCKS = 3, drop_rate=.05, block_sizes = None):
 
 class NeuralWrapper:
     def __init__(self, name, kind, FEATURES, directory, TARGET, args,
-                 rerun_on_all_data=False):
+                 strategy, rerun_on_all_data=False):
         '''
         args: (dict) dict of all model specific NN params.
               for kind=='dae': num_input_columns, layer_size, BLOCKS, drop_rate, cutmix_rate, mixup_rate, num_embedded_dims
               for kind=='ff':  num_input_columns, BLOCKS, drop_rate, block_sizes
               num_input_columns is infered from FEATURES for
+        strategy: (tf.strategy) type of machine to use on model
         rerun_on_all_data: (bool) after fit on X and val, do you run fit again
                            on both fit and val?
         '''
