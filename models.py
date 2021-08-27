@@ -63,12 +63,15 @@ def ff(num_input_columns, BLOCKS = 3, drop_rate=.05, block_sizes = None):
 
 
 class NeuralWrapper:
-    def __init__(self, name, kind, FEATURES, directory, TARGET, args):
+    def __init__(self, name, kind, FEATURES, directory, TARGET, args,
+                 rerun_on_all_data=False):
         '''
         args: (dict) dict of all model specific NN params.
               for kind=='dae': num_input_columns, layer_size, BLOCKS, drop_rate, cutmix_rate, mixup_rate, num_embedded_dims
               for kind=='ff':  num_input_columns, BLOCKS, drop_rate, block_sizes
               num_input_columns is infered from FEATURES for
+        rerun_on_all_data: (bool) after fit on X and val, do you run fit again
+                           on both fit and val?
         '''
 
         self.name = name
@@ -76,7 +79,7 @@ class NeuralWrapper:
         self.FEATURES = FEATURES
         self.directory = os.path.join(directory, name)
         self.TARGET = TARGET
-
+        self.rerun_on_all_data = rerun_on_all_data
         #Create a fold subdirectory inside main directory.
         #If main directory is already created, just added the next
         # fold directory
@@ -120,21 +123,20 @@ class NeuralWrapper:
                       callbacks = callbacks,
                       epochs=epochs, batch_size=1024)
         self.model.save(os.path.join(self.directory, 'best_noVal.h5'))
+        if self.rerun_on_all_data:
+            self.model = tf.keras.models.load_model(os.path.join(self.directory, 'model1.h5'),
+                                               custom_objects={'CutMix': CutMix, 'EmbeddingLayer':EmbeddingLayer, 'MixUp':MixUp})
+            num_epochs = len(H.history['loss']) - self.patience
+            num_epochs = int(num_epochs * 1.1)
 
-        #
-        self.model = tf.keras.models.load_model(os.path.join(self.directory, 'model1.h5'),
-                                           custom_objects={'CutMix': CutMix, 'EmbeddingLayer':EmbeddingLayer, 'MixUp':MixUp})
-        num_epochs = len(H.history['loss']) - self.patience
-        num_epochs = int(num_epochs * 1.1)
+            if self.kind=='dae':
+                data = pd.concat([X[self.FEATURES],val[self.FEATURES]])
+                self.model.fit(x=data[self.FEATURES].values, y= data[self.FEATURES].values, epochs = num_epochs, batch_size=1024)
+            else:
+                data = pd.concat([X[self.FEATURES + [self.TARGET]],val[self.FEATURES + [self.TARGET]]])
+                self.model.fit(x=data[self.FEATURES].values, y= data[self.TARGET].values, epochs = num_epochs, batch_size=1024)
 
-        if self.kind=='dae':
-            data = pd.concat([X[self.FEATURES],val[self.FEATURES]])
-            self.model.fit(x=data[self.FEATURES].values, y= data[self.FEATURES].values, epochs = num_epochs, batch_size=1024)
-        else:
-            data = pd.concat([X[self.FEATURES + [self.TARGET]],val[self.FEATURES + [self.TARGET]]])
-            self.model.fit(x=data[self.FEATURES].values, y= data[self.TARGET].values, epochs = num_epochs, batch_size=1024)
-
-        self.model.save(os.path.join(self.directory, 'best_all.h5'))
+            self.model.save(os.path.join(self.directory, 'best_all.h5'))
 
 
     def predict(self, X):
