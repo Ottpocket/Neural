@@ -64,9 +64,36 @@ def ff(num_input_columns, BLOCKS = 3, drop_rate=.05, block_sizes = None):
 
 
 class NeuralWrapper:
+    '''
+    A sklear compatable wrapper for conveniently creating either a feed forward
+    or DAE neural network.
+
+    Application
+    ____________
+    dae_args = dict(num_input_columns = len(FEATURES), layer_size = 1000,
+                    BLOCKS = 3, drop_rate=.05, cutmix_rate=.2,
+                    mixup_rate=.1, num_embedded_dims=5)
+
+    ff_args = dict(num_input_columns = len(FEATURES), BLOCKS = 3,
+                   drop_rate=.05, block_sizes = None )
+
+    model_dae = NeuralWrapper(name='denoising', kind='dae', FEATURES = FEATURES,
+                          directory = '.', TARGET = FEATURES, args = dae_args,
+                          rerun_on_all_data=True)
+
+    model_ff = NeuralWrapper(name='feed_forward', kind='ff', FEATURES = FEATURES,
+                          directory = '.', TARGET = TARGET, args = ff_args,
+                          rerun_on_all_data=True)
+
+    '''
     def __init__(self, name, kind, FEATURES, directory, TARGET, args,
                  strategy = None, rerun_on_all_data=False):
         '''
+        name: (str) name of model to be used in saving
+        kind: ('dae' or 'ff') feed forward or dae network
+        FEATURES: (list) features to be used by network
+        directory: (directory) where the saved models will go
+        TARGET: (str or list of str) the target variables
         args: (dict) dict of all model specific NN params.
               for kind=='dae': num_input_columns, layer_size, BLOCKS, drop_rate, cutmix_rate, mixup_rate, num_embedded_dims
               for kind=='ff':  num_input_columns, BLOCKS, drop_rate, block_sizes
@@ -176,8 +203,29 @@ class NeuralWrapper:
 
 class NrepeatsModel:
     '''
-    Wrapper function around a sklearn compatable model NN.  Either Dae-like or feed forward.
-    Run NN repeats times on data
+    Creates multiple NeuralWrapper models.  Their predictions are mean averaged.
+
+    Application
+    ____________
+
+    dae_args = dict(num_input_columns = len(FEATURES), layer_size = 1000,
+                    BLOCKS = 3, drop_rate=.05, cutmix_rate=.2,
+                    mixup_rate=.1, num_embedded_dims=5)
+
+    ff_args = dict(num_input_columns = len(FEATURES), BLOCKS = 3,
+                   drop_rate=.05, block_sizes = [100,500,100] )
+
+    dae_wrapper_args = dict(name='denoising', kind='dae', FEATURES = FEATURES,
+                          directory = '.', TARGET = FEATURES, args = dae_args,
+                          rerun_on_all_data=True)
+
+    ff_wrapper_args = dict(name='feed_forward', kind='ff', FEATURES = FEATURES,
+                          directory = '.', TARGET = TARGET, args = ff_args,
+                          rerun_on_all_data=True)
+
+    dae5 = NrepeatsModel(arguments = dae_wrapper_args, repeats = 5)
+    ff10 = NrepeatsModel(arguments = ff_wrapper_args, repeats = 10)
+
     '''
     def __init__(self, arguments, repeats=5):
         '''
@@ -193,11 +241,11 @@ class NrepeatsModel:
         for i in range(repeats):
             if 'NUM' not in arguments['name']:
                 arguments['name'] = f'{arguments["name"]}_NUM0'
-            else:    
+            else:
                 i = 0
                 while f'NUM{i}' in arguments['name']:
                     i += 1
-            arguments['name'] = f'{arguments["name"]}_NUM{i}'      
+            arguments['name'] = f'{arguments["name"]}_NUM{i}'
             self.models.append(NeuralWrapper(**arguments))
 
     def fit(self, X, val, epochs=150):
