@@ -14,6 +14,15 @@ class CutMix(tf.keras.layers.Layer):
     Args
     _____
     noise: (R in [0,1)) probability that a value is not sampled from distribution
+
+    Application
+    ____________
+    CM = CutMix(.2)
+    x = tf.reshape(tf.range(0,10, dtype=tf.float32), (5,2))
+    print(x.numpy())
+
+    y = CM(x,True)
+    print(y.numpy())
     '''
     def __init__(self, noise, **kwargs):
         super(CutMix, self).__init__(**kwargs)
@@ -43,6 +52,15 @@ class EmbeddingLayer(tf.keras.layers.Layer):
     ARGUMENTS
     _____
     num_dims: (int) the number of embedded dimensions.  If None, skips embedding
+
+    Application
+    ______________
+    EL = EmbeddingLayer(3)
+    x = tf.reshape(tf.range(0,10, dtype=tf.float32), (5,2))
+    print(x.numpy())
+
+    y = EL(x)
+    print(y.numpy())
     '''
     def __init__(self, num_dims=None, **kwargs):
         super(EmbeddingLayer, self).__init__(**kwargs)
@@ -70,6 +88,14 @@ class MixUp(tf.keras.layers.Layer):
     Args
     _____
     alpha: (R in [0,1)) percentage of random sample to input  used
+
+    Application
+    ____________
+    MU = MixUp(.1)
+    x = tf.reshape(tf.range(0,10, dtype=tf.float32), (5,2))
+    y = MU(x)
+    print(x.numpy())
+    print(y.numpy())
     '''
     def __init__(self, alpha, **kwargs):
         super(MixUp, self).__init__(**kwargs)
