@@ -252,7 +252,7 @@ class NrepeatsModel:
 
         for i in range(self.repeats):
             print(f'Training model {i+1} of {self.repeats}')
-            self.models[i].fit(X, val, epochs=150)
+            self.models[i].fit(X, val, epochs=epochs)
 
     def predict(self, X):
         outputs = np.zeros(shape = self.models[0].get_output_shape(X), dtype=np.float32)
