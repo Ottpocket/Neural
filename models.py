@@ -181,19 +181,19 @@ class NeuralWrapper:
 
             if self.kind=='dae':
                 data = pd.concat([X[self.FEATURES],val[self.FEATURES]])
-                self.model.fit(x=data[self.FEATURES].values, y= data[self.FEATURES].values, epochs = num_epochs, batch_size=1024)
+                self.model.fit(x=data[self.FEATURES].values, y= data[self.FEATURES].values, epochs = num_epochs, batch_size=batch_size)
             else:
                 data = pd.concat([X[self.FEATURES + [self.TARGET]],val[self.FEATURES + [self.TARGET]]])
-                self.model.fit(x=data[self.FEATURES].values, y= data[self.TARGET].values, epochs = num_epochs, batch_size=1024)
+                self.model.fit(x=data[self.FEATURES].values, y= data[self.TARGET].values, epochs = num_epochs, batch_size=batch_size)
 
             self.model.save(os.path.join(self.directory, 'best_all.h5'))
 
 
     def predict(self, X):
         if self.kind == 'dae':
-            return self.embedder.predict(X, batch_size=10000)
+            return self.embedder.predict(X[self.FEATURES].values, batch_size=10000)
         else:
-            return self.model.predict(X, batch_size=10000)
+            return self.model.predict(X[self.FEATURES].values, batch_size=10000)
 
     def get_output_shape(self, data):
         '''
