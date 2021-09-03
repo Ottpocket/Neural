@@ -248,11 +248,11 @@ class NrepeatsModel:
             arguments['name'] = f'{arguments["name"]}_NUM{i}'
             self.models.append(NeuralWrapper(**arguments))
 
-    def fit(self, X, val, epochs=150):
+    def fit(self, X, val, epochs=150, batch_size = 1024):
 
         for i in range(self.repeats):
             print(f'Training model {i+1} of {self.repeats}')
-            self.models[i].fit(X, val, epochs=epochs)
+            self.models[i].fit(X, val, epochs=epochs, batch_size = batch_size)
 
     def predict(self, X):
         outputs = np.zeros(shape = self.models[0].get_output_shape(X), dtype=np.float32)
