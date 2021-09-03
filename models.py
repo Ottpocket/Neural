@@ -199,7 +199,7 @@ class NeuralWrapper:
         '''
         returns shape of output from this neural network
         '''
-        return (data.shape[0]. self.output_cols)
+        return (data.shape[0], self.output_cols)
 
 class NrepeatsModel:
     '''
