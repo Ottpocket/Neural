@@ -156,7 +156,7 @@ class NeuralWrapper:
                 self.output_cols = 1
 
         self.model.save(os.path.join(self.directory, 'model1.h5'))
-    def fit(self, X, val, epochs=150):
+    def fit(self, X, val, epochs=150, batch_size = 1024):
         '''
         Trains the network and saves it every n epochs.
         Optionally, trains the network once with early stopping, then restarts
@@ -171,7 +171,7 @@ class NeuralWrapper:
         callbacks = [self.early_stopping]
         H = self.model.fit(x=X[self.FEATURES].values, y=X[self.TARGET].values, validation_data = (val[self.FEATURES].values, val[self.TARGET].values),
                       callbacks = callbacks,
-                      epochs=epochs, batch_size=1024)
+                      epochs=epochs, batch_size=batch_size)
         self.model.save(os.path.join(self.directory, 'best_noVal.h5'))
         if self.rerun_on_all_data:
             self.model = tf.keras.models.load_model(os.path.join(self.directory, 'model1.h5'),
