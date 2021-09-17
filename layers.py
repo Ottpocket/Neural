@@ -134,3 +134,39 @@ def ResnetBlock(x, layer_reshaped, name=None):
     else:
         y = tf.keras.layers.Add(name = name)([x, y])
     return y
+
+
+class ResnetBlockTabular(tf.keras.Model):
+    def __init__(self, output_dim, **kwargs):
+        '''
+        output_dim: (int) dimension of output dense layer.
+        NOTE: if output_dim == input_dim, this is a ResNetIdentityBlock
+        '''
+        super(ResnetBlockTabular, self).__init__(**kwargs)
+        self.output_dim = output_dim
+
+    def build(self, input_shape):
+        if self.output_dim == input_shape[-1]:
+            self.Dense1 = None
+        else:
+            self.Dense1 = tf.keras.layers.Dense(output_dim)
+
+        self.bn1 = tf.keras.layers.BatchNormalization()
+        self.relu1 = tf.keras.layers.ReLU()
+        self.dense2 = tf.keras.layers.Dense(self.output_dim)
+        self.bn2 = tf.keras.layers.BatchNormalization()
+        self.relu2 = tf.keras.layers.ReLU()
+        self.dense3 = tf.keras.layers.Dense(self.output_dim)
+
+    def call(self, input_tensor, training=False):
+        if self.Dense1 is not None:
+            input_tensor = self.Dense1(input_tensor)
+        
+        x = self.bn1(input_tensor)
+        x = self.relu1(x)
+        x = self.dense2(x)
+        x = self.bn2(x)
+        x = self.relu2(x)
+        x = self.dense3(x)
+
+        return x + input_tensor
