@@ -1,0 +1,42 @@
+#########################################################
+#A list of kaggle recipes!
+#########################################################
+
+
+#XVal for Neural methods
+#######################
+#Cross Val Params
+#######################
+NUM_FOLDS = 5 # the number of folds in the KFold validation
+NUM_STARTS = 1 #Number of random starts to train per fold
+NUM_SPLITS = 1 #Number of times to repeat the KFold validation
+oof = pd.DataFrame()
+preds = pd.DataFrame()
+ES = tf.keras.callbacks.EarlyStopping(monitor='val_auc', min_delta=0, patience=20, verbose=0, mode='max')
+
+#Number of times to do KFold cross val
+for random_state in tqdm(range(NUM_SPLITS)):
+    skf = StratifiedKFold(n_splits=NUM_FOLDS, shuffle=True, random_state=random_state)
+    oof[random_state] = np.zeros(train.shape[0])
+    preds[f'Fold_{random_state}'] = np.zeros(test.shape[0])
+    
+    for f, (t_idx, v_idx) in enumerate(skf.split(X=train, y=train[TARGET])):
+        tr_temp = train[FEATURES].iloc[t_idx]
+        tr_temp_target = train[TARGET].iloc[t_idx]
+        val_temp = train[FEATURES].iloc[v_idx]
+        val_temp_target = train[TARGET].iloc[v_idx]
+        Repeat_start = time()
+        
+        #Number of random starts per fold
+        for repeat in range(NUM_STARTS):
+            tf.keras.backend.clear_session()
+            start = time()
+            model = ff(len(FEATURES), BLOCKS = 4, drop_rate=.3, kernel_size = 2)
+            
+            model.fit(tr_temp, tr_temp_target, batch_size=1024, callbacks=[ES], epochs=200,
+                      validation_data=(val_temp, val_temp_target))
+            oof[random_state].iloc[v_idx] = np.squeeze(model.predict(val_temp, batch_size=100000)) / NUM_STARTS
+            preds[f'Fold_{random_state}'] += np.squeeze(model.predict(test[FEATURES], 
+                                                                     batch_size=100000)) / (NUM_STARTS * NUM_FOLDS)
+            print(f'{time() - start :.2f}', end=', ')
+        print(f'Repeat total: {time() - Repeat_start :.2f}')
