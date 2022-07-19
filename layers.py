@@ -117,6 +117,44 @@ class MixUp(tf.keras.layers.Layer):
         return inputs
 
 
+class NoiseMaker(tf.keras.layers.Layer):
+    '''
+    Randomly selects between several different noise types.
+    
+    ARGUMENTS
+    -------------------
+    gauss: (float or None) variance parameter of gaussian layer.  Noise is additive.  `None` deselects the layer.
+    mixup: (float or None) alpha of mixup.  Prob you keep the original input.  `None` deselects the layer.
+    cutmix: (float or None) lambda of cutmix.  Prob you keep the original input.  `None` deselects the layer.
+    dropout: (float or None) prob of dropout.  Prob you drop the original input for 0.  `None` deselects the layer.
+    
+    OUTPUTS
+    -------------------
+    NoiseMaker layer
+    '''
+    def __init__(self, gauss=.01, mixup =.9, cutmix=.9, dropout=.1, **kwargs):
+        super(NoiseMaker, self).__init__(**kwargs)
+        
+        self.noise_dict = {}
+        if (gauss is not None) and (gauss <1) and (gauss>0):
+            self.noise_dict['gauss'] = tf.keras.layers.GaussianNoise(gauss)
+        
+        if (mixup is not None) and (mixup <1) and (mixup>0):
+            self.noise_dict['mixup']  = MixUp(mixup)
+        
+        if (cutmix is not None) and (cutmix <1) and (cutmix>0):
+            self.noise_dict['cutmix']  = CutMix(cutmix)
+    
+        if (dropout is not None) and (dropout <1) and (dropout>0):
+            self.noise_dict['dropout']  = tf.keras.layers.Dropout(dropout)
+        
+        
+    def call(self, inputs):
+        specific_noise = np.random.choice(list(self.noise_dict.keys()), size=1)[0]
+        print(specific_noise)
+        x = self.noise_dict[specific_noise](inputs)
+        return x
+    
 
 def ResnetBlock(x, layer_reshaped, name=None):
     #arch from https://towardsdatascience.com/residual-blocks-building-blocks-of-resnet-fd90ca15d6ec
