@@ -131,6 +131,14 @@ class NoiseMaker(tf.keras.layers.Layer):
     OUTPUTS
     -------------------
     NoiseMaker layer
+    
+    EXAMPLE USEAGE
+    --------------------
+    noisemaker = NoiseMaker()
+    x = np.array(range(50)).reshape((5,10))
+    x = tf.convert_to_tensor(x, dtype=tf.float32, dtype_hint=None, name=None)
+    y = noisemaker(x, training=True)
+    print(y)
     '''
     def __init__(self, gauss=.01, mixup =.9, cutmix=.9, dropout=.1, **kwargs):
         super(NoiseMaker, self).__init__(**kwargs)
@@ -151,7 +159,6 @@ class NoiseMaker(tf.keras.layers.Layer):
         
     def call(self, inputs):
         specific_noise = np.random.choice(list(self.noise_dict.keys()), size=1)[0]
-        print(specific_noise)
         x = self.noise_dict[specific_noise](inputs)
         return x
     
