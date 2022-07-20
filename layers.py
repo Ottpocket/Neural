@@ -45,9 +45,9 @@ class CutMix(tf.keras.layers.Layer):
         return inputs
 
 
-class EmbeddingLayer(tf.keras.layers.Layer):
+class EmbeddingLayerNum(tf.keras.layers.Layer):
     '''
-    Implementation of the Embedding layer.  Embeds all features into `num_dims`
+    Implementation of the Embedding layer for numeric columns (i.e. float32, non categorical).  Embeds all features into `num_dims`
     dimensions.  Takes in (None, FEATURES) tensor and outputs (None, FEATURES * num_dims) size tensor.
 
     ARGUMENTS
