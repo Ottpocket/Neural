@@ -17,7 +17,6 @@ class ClassToInt:
         '''
         for col in df.columns:
             if (df[col].dtype.name in ['object','category']) or ('int' in df[col].dtype.name):
-                print(col)
                 if df[col].isnull().sum() >0:
                     raise Exception(f'ERROR: {col} has NA values.')
                  
@@ -39,3 +38,7 @@ class ClassToInt:
     def fit_transform(self, df):
         self.fit(df)
         return self.transform(df)
+    
+    def reverse_transform(self, df):
+        #TODO: transforms columns from int to previous data
+        pass
