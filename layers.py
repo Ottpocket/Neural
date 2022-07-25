@@ -123,7 +123,7 @@ class NoiseMaker(tf.keras.layers.Layer):
     
     ARGUMENTS
     -------------------
-    gauss: (float or None) variance parameter of gaussian layer.  Noise is additive.  `None` deselects the layer.
+    gauss: (float or None) standard deviation parameter of gaussian layer.  Noise is additive.  `None` deselects the layer.
     mixup: (float or None) alpha of mixup.  Prob you keep the original input.  `None` deselects the layer.
     cutmix: (float or None) lambda of cutmix.  Prob you keep the original input.  `None` deselects the layer.
     dropout: (float or None) prob of dropout.  Prob you drop the original input for 0.  `None` deselects the layer.
