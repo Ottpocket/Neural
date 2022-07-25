@@ -8,6 +8,7 @@ def Batch_Drop_Dense(x, name, drop_rate, layer_size, activation = 'relu'):
     #x = tf.keras.layers.Dense(layer_size, activation=activation, name= f'Dense_{name}')(x)
     return x
 
+@tf.keras.utils.register_keras_serializable()
 class CutMix(tf.keras.layers.Layer):
     '''
     Implementation of CutMix
@@ -44,7 +45,8 @@ class CutMix(tf.keras.layers.Layer):
             return msk * inputs + (tf.ones_like(msk) - msk) * shuffled
         return inputs
 
-
+   
+@tf.keras.utils.register_keras_serializable()
 class EmbeddingLayerNum(tf.keras.layers.Layer):
     '''
     Implementation of the Embedding layer for numeric columns (i.e. float32, non categorical).  Embeds all features into `num_dims`
@@ -64,14 +66,14 @@ class EmbeddingLayerNum(tf.keras.layers.Layer):
     print(y.numpy())
     '''
     def __init__(self, num_dims=None, **kwargs):
-        super(EmbeddingLayer, self).__init__(**kwargs)
+        super(EmbeddingLayerNum, self).__init__(**kwargs)
         self.num_dims = num_dims
         if self.num_dims is not None:
             self.emb = tf.keras.layers.Conv1D(filters=self.num_dims, kernel_size=1, activation='relu')
             self.Flatten = tf.keras.layers.Flatten()
 
     def get_config(self):
-        config = super(EmbeddingLayer, self).get_config()
+        config = super(EmbeddingLayerNum, self).get_config()
         config.update({"num_dims": self.num_dims})
         return config
 
@@ -81,7 +83,8 @@ class EmbeddingLayerNum(tf.keras.layers.Layer):
 
         return self.Flatten(self.emb(tf.expand_dims(inputs, -1)))
 
-
+    
+@tf.keras.utils.register_keras_serializable()
 class MixUp(tf.keras.layers.Layer):
     '''
     Implementation of MixUp
@@ -116,7 +119,7 @@ class MixUp(tf.keras.layers.Layer):
             return self.alpha_constant * inputs + self.one_minus_alpha * shuffled
         return inputs
 
-
+@tf.keras.utils.register_keras_serializable()
 class NoiseMaker(tf.keras.layers.Layer):
     '''
     Randomly selects between several different noise types.
