@@ -9,6 +9,54 @@ def Batch_Drop_Dense(x, name, drop_rate, layer_size, activation = 'relu'):
     #x = tf.keras.layers.Dense(layer_size, activation=activation, name= f'Dense_{name}')(x)
     return x
 
+
+@tf.keras.utils.register_keras_serializable()
+class CategoricalHeadTabular(tf.keras.layers.Layer):
+    '''
+    The head of a tabular model that accepts categorical (as opposed to numeric) inputs
+    The network 
+    1) inputs the values
+    2) (optional) adds noise to the values
+    3) embeds the layers to an N-dimensional space
+    4) (optional) adds noise to the embedded values
+    '''
+    def __init__(self, col_tokens, input_noisemaker_params = {'gauss':None, 'mixup':None, 'cutmix':.9, 'dropout':None}, embedding_dims=1, 
+                 embedding_noisemaker_params= {'gauss':.01, 'mixup':.9, 'cutmix':.9, 'dropout':.1}, **kwargs):
+        '''
+        ARGUMENTS
+        ---------------------------
+        col_tokens: (list) list of number of unique tokens each columns has
+        input_noisemaker_params: (dict) the parameters to a NoiseMaker layer
+        embedding_dims: (bool) number of dimensions to embed each value
+        embedding_noisemaker_params: (dict) the parameters to a NoiseMaker layer
+        '''
+        super(CategoricalHeadTabular, self).__init__(**kwargs)
+        #Saving the raw arguments
+        self.col_tokens = col_tokens
+        self.input_noisemaker_params = input_noisemaker_params
+        self.embedding_dims = embedding_dims
+        self.embedding_noisemaker_params = embedding_noisemaker_params
+        
+        #Model Layers
+        self.input_noisemaker = NoiseMaker(**input_noisemaker_params)
+        self.embedding_layer = EmbeddingLayerCat(col_tokens,embedding_dims)
+        self.embedding_noisemaker = NoiseMaker(**embedding_noisemaker_params)
+        
+    def get_config(self):
+        config = super().get_config()
+        config['col_tokens'] = self.col_tokens
+        config['input_noisemaker_params'] = self.input_noisemaker_params 
+        config['embedding_dims'] = self.embedding_dims 
+        config['embedding_noisemaker_params'] = self.embedding_noisemaker_params 
+        return config
+    
+    def call(self, input):
+        x = self.input_noisemaker(input)
+        x = self.embedding_layer(x)
+        x = self.embedding_noisemaker(x)
+        return x
+
+
 @tf.keras.utils.register_keras_serializable()
 class CutMix(tf.keras.layers.Layer):
     '''
@@ -46,7 +94,49 @@ class CutMix(tf.keras.layers.Layer):
             return msk * inputs + (tf.ones_like(msk) - msk) * shuffled
         return inputs
 
-   
+
+@tf.keras.utils.register_keras_serializable()
+class EmbeddingLayerCat(tf.keras.layers.Layer):
+    '''
+    Creates a list of tf.keras.layers.Embedding layers to embed all categorical data
+    NOTE: all the categorical data has been proprocessed to be integers starting at 0.
+    
+    
+    ARGUMENTS
+    ------------------
+    col_tokens: (list) list of the number of unique tokens for each column in the inputs.
+    embedding_dims: (int) the size of the embeddings
+    '''
+    def __init__(self, col_tokens, embedding_dims =1, **kwargs):
+        super(EmbeddingLayerCat, self).__init__(**kwargs)
+    
+        #Saving params
+        self.col_tokens  = col_tokens
+        self.embedding_dims = embedding_dims
+        
+        #Model Layers
+        self.slices = []
+        self.embedders = [] 
+        for i, col_token in enumerate(col_tokens):
+            self.slices.append(tf.keras.layers.Lambda(lambda a,k=i: a[:,k], name=f"slice_{i}", dtype=tf.int32))
+            self.embedders.append(tf.keras.layers.Embedding(col_token, embedding_dims, name=f'embedding_{i}'))
+    
+    def get_config(self):
+        config = super().get_config()
+        config['col_tokens'] = self.col_tokens
+        config['embedding_dims'] = self.embedding_dims
+        return config
+    
+    def call(self, input):
+        embeddings = []
+        for index in range(len(self.col_tokens)):
+            temp = self.slices[index](input)
+            temp = self.embedders[index](temp)
+            embeddings.append(temp)
+        
+        return tf.concat(embeddings, axis=1)
+    
+    
 @tf.keras.utils.register_keras_serializable()
 class EmbeddingLayerNum(tf.keras.layers.Layer):
     '''
@@ -164,6 +254,52 @@ class NoiseMaker(tf.keras.layers.Layer):
     def call(self, inputs):
         specific_noise = np.random.choice(list(self.noise_dict.keys()), size=1)[0]
         x = self.noise_dict[specific_noise](inputs)
+        return x
+
+
+@tf.keras.utils.register_keras_serializable()
+class NumericHeadTabular(tf.keras.layers.Layer):
+    '''
+    The head of a tabular model that accepts numerical (as opposed to categorical) inputs
+    The network 
+    1) inputs the values
+    2) (optional) adds noise to the values
+    3) embeds the layers to an N-dimensional space
+    4) (optional) adds noise to the embedded values
+    '''
+    def __init__(self, input_noisemaker_params = {'gauss':None, 'mixup':.9, 'cutmix':.9, 'dropout':.1}, embedding_dims=1, 
+                 embedding_noisemaker_params= {'gauss':.01, 'mixup':.9, 'cutmix':.9, 'dropout':.1}, **kwargs):
+        '''
+        ARGUMENTS
+        ---------------------------
+        input_noisemaker_params: (dict) the parameters to a NoiseMaker layer
+        embedding_dims: (bool) number of dimensions to embed each value
+        embedding_noisemaker_params: (dict) the parameters to a NoiseMaker layer
+        '''
+        super(NumericHeadTabular, self).__init__(**kwargs)
+        #Saving the raw arguments
+        self.input_noisemaker_params = input_noisemaker_params
+        self.batch_norm = tf.keras.layers.BatchNormalization()
+        self.embedding_dims = embedding_dims
+        self.embedding_noisemaker_params = embedding_noisemaker_params
+        
+        #Model Layers
+        self.input_noisemaker = NoiseMaker(**input_noisemaker_params)
+        self.embedding_layer = EmbeddingLayerNum(embedding_dims)
+        self.embedding_noisemaker = NoiseMaker(**embedding_noisemaker_params)
+        
+    def get_config(self):
+        config = super().get_config()
+        config['input_noisemaker_params'] = self.input_noisemaker_params 
+        config['embedding_dims'] = self.embedding_dims 
+        config['embedding_noisemaker_params'] = self.embedding_noisemaker_params 
+        return config
+    
+    def call(self, input):
+        x = self.input_noisemaker(input)
+        x = self.batch_norm(x)
+        x = self.embedding_layer(x)
+        x = self.embedding_noisemaker(x)
         return x
     
 
