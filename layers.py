@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
+import numpy as np
 
 def Batch_Drop_Dense(x, name, drop_rate, layer_size, activation = 'relu'):
     x = tf.keras.layers.BatchNormalization()(x)
