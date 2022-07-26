@@ -210,6 +210,7 @@ class MixUp(tf.keras.layers.Layer):
             return self.alpha_constant * inputs + self.one_minus_alpha * shuffled
         return inputs
 
+    
 @tf.keras.utils.register_keras_serializable()
 class NoiseMaker(tf.keras.layers.Layer):
     '''
@@ -236,6 +237,8 @@ class NoiseMaker(tf.keras.layers.Layer):
     '''
     def __init__(self, gauss=.01, mixup =.9, cutmix=.9, dropout=.1, **kwargs):
         super(NoiseMaker, self).__init__(**kwargs)
+        self.params = {'gauss':gauss, 'mixup':mixup, 'cutmix':cutmix, 'dropout':dropout}
+        
         
         self.noise_dict = {}
         if (gauss is not None) and (gauss <1) and (gauss>0):
@@ -249,14 +252,19 @@ class NoiseMaker(tf.keras.layers.Layer):
     
         if (dropout is not None) and (dropout <1) and (dropout>0):
             self.noise_dict['dropout']  = tf.keras.layers.Dropout(dropout)
-        
+            
+    def get_config(self):
+        config = super().get_config()
+        for key, value in self.params.items():
+            config[key] = value
+        return config
         
     def call(self, inputs):
         specific_noise = np.random.choice(list(self.noise_dict.keys()), size=1)[0]
         x = self.noise_dict[specific_noise](inputs)
         return x
-
-
+    
+    
 @tf.keras.utils.register_keras_serializable()
 class NumericHeadTabular(tf.keras.layers.Layer):
     '''
