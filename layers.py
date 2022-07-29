@@ -96,83 +96,98 @@ class CutMix(tf.keras.layers.Layer):
 
 
 @tf.keras.utils.register_keras_serializable()
-class EmbeddingLayerCat(tf.keras.layers.Layer):
+class EmbeddingLayer(tf.keras.layers.Layer):
     '''
-    Creates a list of tf.keras.layers.Embedding layers to embed all categorical data
-    NOTE: all the categorical data has been proprocessed to be integers starting at 0.
-    
+    Base class to embed data    
     
     ARGUMENTS
     ------------------
-    col_tokens: (list) list of the number of unique tokens for each column in the inputs.
     embedding_dims: (int) the size of the embeddings
     '''
-    def __init__(self, col_tokens, embedding_dims =1, **kwargs):
-        super(EmbeddingLayerCat, self).__init__(**kwargs)
+    def __init__(self, num_columns, embedding_dims =1, **kwargs):
+        super(EmbeddingLayer, self).__init__(**kwargs)
     
         #Saving params
-        self.col_tokens  = col_tokens
         self.embedding_dims = embedding_dims
+        self.num_columns = num_columns
         
         #Model Layers
         self.slices = []
         self.embedders = [] 
-        for i, col_token in enumerate(col_tokens):
-            self.slices.append(tf.keras.layers.Lambda(lambda a,k=i: a[:,k], name=f"slice_{i}", dtype=tf.int32))
-            self.embedders.append(tf.keras.layers.Embedding(col_token, embedding_dims, name=f'embedding_{i}'))
+        for index in range(self.num_columns):
+            self.slices.append(tf.keras.layers.Lambda(lambda a,k=index: a[:,k], name=f"slice_{index}", dtype=tf.int32))
+            self.embedders.append(self.get_specific_embedder(index))
+            
+        #Post processing 
+        self.flatten = tf.keras.layers.Flatten(name='flatten')
+    
+    def get_specific_embedder(self, index):
+        return tf.keras.layers.GaussianNoise(name = f'Noise_{index}', stddev=0.0001)
     
     def get_config(self):
         config = super().get_config()
-        config['col_tokens'] = self.col_tokens
         config['embedding_dims'] = self.embedding_dims
+        config['num_columns'] = self.num_columns
         return config
     
     def call(self, input):
         embeddings = []
-        for index in range(len(self.col_tokens)):
-            temp = self.slices[index](input)
+        for index in range(self.num_columns):
+            temp = tf.expand_dims(tf.expand_dims(self.slices[index](input), -1), -1) #reshapes slice from (batch_size,) to (batch_size,1,1)
             temp = self.embedders[index](temp)
             embeddings.append(temp)
         
-        return tf.concat(embeddings, axis=1)
+        return self.flatten(tf.concat(embeddings, axis=1))
+        #return tf.concat(embeddings, axis=1)
     
     
 @tf.keras.utils.register_keras_serializable()
-class EmbeddingLayerNum(tf.keras.layers.Layer):
+class EmbeddingLayerCat(EmbeddingLayer):
     '''
-    Implementation of the Embedding layer for numeric columns (i.e. float32, non categorical).  Embeds all features into `num_dims`
-    dimensions.  Takes in (None, FEATURES) tensor and outputs (None, FEATURES * num_dims) size tensor.
-
-    ARGUMENTS
-    _____
-    num_dims: (int) the number of embedded dimensions.  If None, skips embedding
-
-    Application
-    ______________
-    EL = EmbeddingLayer(3)
-    x = tf.reshape(tf.range(0,10, dtype=tf.float32), (5,2))
-    print(x.numpy())
-
-    y = EL(x)
-    print(y.numpy())
+    
     '''
-    def __init__(self, num_dims=None, **kwargs):
-        super(EmbeddingLayerNum, self).__init__(**kwargs)
-        self.num_dims = num_dims
-        if self.num_dims is not None:
-            self.emb = tf.keras.layers.Conv1D(filters=self.num_dims, kernel_size=1, activation='relu')
-            self.Flatten = tf.keras.layers.Flatten()
-
+    def __init__(self, col_tokens, embedding_dims =1, num_columns=None, **kwargs):
+        #Saving params
+        self.col_tokens  = col_tokens
+        self.embedding_dims = embedding_dims
+        super().__init__(num_columns = len(col_tokens), embedding_dims =embedding_dims, **kwargs)
+    
+    def get_specific_embedder(self, index):
+        return tf.keras.layers.Embedding(self.col_tokens[index], self.embedding_dims, name=f'embedding_{index}')
+    
     def get_config(self):
-        config = super(EmbeddingLayerNum, self).get_config()
-        config.update({"num_dims": self.num_dims})
+        config = super().get_config()
+        config['col_tokens'] = self.col_tokens
+        return config    
+    
+    
+@tf.keras.utils.register_keras_serializable()
+class EmbeddingLayerNum(EmbeddingLayer):
+    '''
+    Has 1d convolution per feature    
+    
+    ARGUMENTS
+    ------------------
+    num_columns:(int) number of columns to embed 
+    embedding_dims: (int) the size of the embeddings
+    
+    APPLICATION
+    ---------------------
+    embedder = EmbeddingLayerNum(num_columns=2, embedding_dims=2)
+    data = pd.DataFrame({'a':[-4444444, 1, 99999, 1], 'n':[1,2,-4444444, 1]}).astype('float32').values
+    embedder(data)
+    '''
+    def __init__(self, num_columns, embedding_dims =1, **kwargs):
+        super().__init__(num_columns, embedding_dims, **kwargs)
+    
+    def get_specific_embedder(self, index):
+        return tf.keras.layers.Conv1D(filters=self.embedding_dims, kernel_size=1, activation='relu')
+        
+    def get_config(self):
+        config = super().get_config()
         return config
-
-    def call(self, inputs):
-        if self.num_dims is None:
-            return inputs
-
-        return self.Flatten(self.emb(tf.expand_dims(inputs, -1)))
+    
+    @tf.keras.utils.register_keras_serializable()
 
     
 @tf.keras.utils.register_keras_serializable()
