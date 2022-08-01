@@ -304,11 +304,6 @@ class NumericHeadTabular(tf.keras.layers.Layer):
         self.embedding_dims = embedding_dims
         self.embedding_noisemaker_params = embedding_noisemaker_params
         
-        #Model Layers
-        self.input_noisemaker = NoiseMaker(**input_noisemaker_params)
-        self.embedding_layer = EmbeddingLayerNum(embedding_dims)
-        self.embedding_noisemaker = NoiseMaker(**embedding_noisemaker_params)
-        
     def get_config(self):
         config = super().get_config()
         config['input_noisemaker_params'] = self.input_noisemaker_params 
@@ -316,13 +311,19 @@ class NumericHeadTabular(tf.keras.layers.Layer):
         config['embedding_noisemaker_params'] = self.embedding_noisemaker_params 
         return config
     
+    def build(self, input_shape):
+        #Model Layers
+        input_shape = input_shape.as_list()[1]
+        self.input_noisemaker = NoiseMaker(**self.input_noisemaker_params)
+        self.embedding_layer = EmbeddingLayerNum(num_columns = input_shape, embedding_dims  = self.embedding_dims)
+        self.embedding_noisemaker = NoiseMaker(**self.embedding_noisemaker_params)
+    
     def call(self, input):
         x = self.input_noisemaker(input)
         x = self.batch_norm(x)
         x = self.embedding_layer(x)
         x = self.embedding_noisemaker(x)
-        return x
-    
+        return x    
 
 def ResnetBlock(x, layer_reshaped, name=None):
     #arch from https://towardsdatascience.com/residual-blocks-building-blocks-of-resnet-fd90ca15d6ec
