@@ -187,8 +187,6 @@ class EmbeddingLayerNum(EmbeddingLayer):
         config = super().get_config()
         return config
     
-    @tf.keras.utils.register_keras_serializable()
-
     
 @tf.keras.utils.register_keras_serializable()
 class MixUp(tf.keras.layers.Layer):
